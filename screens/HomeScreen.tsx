@@ -2,7 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { MapPinIcon } from 'react-native-heroicons/solid';
 import { BellIcon, MagnifyingGlassIcon } from 'react-native-heroicons/outline';
-import { View, Text, Image, SafeAreaView, TextInput, TouchableOpacity, FlatList, StyleSheet } from 'react-native';
+import { View, Text, Image, SafeAreaView, TextInput, TouchableOpacity, FlatList, StyleSheet, Modal, Button } from 'react-native';
 import CoffeeCard from '../components/CoffeeCard';
 import { CoffeeTypes } from '../types/CoffeeTypes';
 
@@ -10,9 +10,12 @@ export default function HomeScreen() {
     const location = 'New York, NY'; // Hardcoded location for now
     const username = 'John Doe'; // Hardcoded username for now
 
-    const [category, setCategory] = React.useState('Coffee');
+    const [category, setCategory] = React.useState('All');
     const [active, setActive] = React.useState(false);
 
+    const [searchQuery, setSearchQuery] = React.useState(''); // Search query state
+    const [selectedItem, setSelectedItem] = React.useState<CoffeeTypes | null>(null); // Selected item state
+    const [isModalVisible, setIsModalVisible] = React.useState(false); // Modal visibility state
 
     const categories: CoffeeTypes[] = [
         { id: 1, name: 'Coffee', price: '2.99', image: require('../assets/coffee.png'), stars: 4.2 },
@@ -22,7 +25,19 @@ export default function HomeScreen() {
         { id: 5, name: 'Mocha', price: '4.49', image: require('../assets/coffee5.png'), stars: 4.6 },
     ];
 
+    // Define the category menu data including "All"
+    const categoryMenu = ['All', ...categories.map(item => item.name)];
 
+    // Filter items based on selected category and search query
+    const filteredCategories = categories.filter(item =>
+        (category === 'All' || item.name === category) &&
+        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    const handleCardPress = (item: CoffeeTypes) => {
+        setSelectedItem(item);
+        setIsModalVisible(true);
+    }
 
     return (
         <View style={styles.container}>
@@ -53,6 +68,8 @@ export default function HomeScreen() {
                         <TextInput
                             placeholder="Search"
                             style={styles.searchInput}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
                         />
                         <TouchableOpacity style={styles.searchButton}>
                             <MagnifyingGlassIcon size={30} strokeWidth={2} color={"white"} />
@@ -65,23 +82,23 @@ export default function HomeScreen() {
                     <FlatList
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        data={categories}
-                        keyExtractor={(item) => item.id.toString()}
+                        data={categoryMenu}
+                        keyExtractor={(item, index) => index.toString()}
                         renderItem={({ item }) => (
                             <TouchableOpacity
                                 onPress={() => {
-                                    setCategory(item.name);
+                                    setCategory(item);
                                     setActive(true);
                                 }}
                                 style={[
                                     styles.categoryButton,
-                                    { opacity: category === item.name ? 1 : 0.7 }
+                                    { opacity: category === item ? 1 : 0.7 }
                                 ]}
                             >
                                 <Text style={{
-                                    color: category === item.name ? 'white' : 'black'
+                                    color: category === item ? 'white' : 'black'
                                 }}>
-                                    {item.name}
+                                    {item}
                                 </Text>
                             </TouchableOpacity>
                         )}
@@ -93,15 +110,37 @@ export default function HomeScreen() {
                     <FlatList
                         horizontal
                         showsHorizontalScrollIndicator={false}
-                        data={categories}
+                        data={filteredCategories}
                         keyExtractor={(item) => item.id.toString()}
                         renderItem={({ item }) => (
-                            <CoffeeCard item={item} />
+                            <TouchableOpacity onPress={() => handleCardPress(item)}>
+                                <CoffeeCard item={item} />
+                            </TouchableOpacity>
                         )}
                         contentContainerStyle={styles.coffeeCardsContent}
                     />
                 </View>
             </SafeAreaView>
+
+            {/* Modal */}
+            {selectedItem && (
+                <Modal
+                    animationType="slide"
+                    transparent={true}
+                    visible={isModalVisible}
+                    onRequestClose={() => setIsModalVisible(false)}
+                >
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>{selectedItem.name}</Text>
+                            <Image source={selectedItem.image ? selectedItem.image : require('../assets/coffee.png')} style={styles.modalImage} />
+                            <Text style={styles.modalText}>Price: {selectedItem.price}</Text>
+                            <Text style={styles.modalText}>Rating: {selectedItem.stars}</Text>
+                            <Button title="Close" onPress={() => setIsModalVisible(false)} />
+                        </View>
+                    </View>
+                </Modal>
+            )}
         </View>
     );
 }
@@ -199,5 +238,32 @@ const styles = StyleSheet.create({
     coffeeCardsContent: {
         justifyContent: 'space-around',
         padding: 10,
+    },
+    modalContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    modalContent: {
+        backgroundColor: 'white',
+        padding: 20,
+        borderRadius: 10,
+        alignItems: 'center',
+    },
+    modalTitle: {
+        fontSize: 24,
+        fontWeight: 'bold',
+        marginBottom: 10,
+    },
+    modalImage: {
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 10,
+    },
+    modalText: {
+        fontSize: 18,
+        marginBottom: 5,
     },
 });
