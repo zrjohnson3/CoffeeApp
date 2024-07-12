@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { MapPinIcon } from 'react-native-heroicons/solid';
 import { BellIcon, MagnifyingGlassIcon } from 'react-native-heroicons/outline';
@@ -10,26 +10,47 @@ export default function HomeScreen() {
     const location = 'New York, NY'; // Hardcoded location for now
     const username = 'John Doe'; // Hardcoded username for now
 
+    const [coffees, setCoffees] = React.useState<CoffeeTypes[]>([]);
     const [category, setCategory] = React.useState('All');
     const [active, setActive] = React.useState(false);
-
     const [searchQuery, setSearchQuery] = React.useState(''); // Search query state
     const [selectedItem, setSelectedItem] = React.useState<CoffeeTypes | null>(null); // Selected item state
     const [isModalVisible, setIsModalVisible] = React.useState(false); // Modal visibility state
 
-    const categories: CoffeeTypes[] = [
-        { id: 1, name: 'Coffee', price: '2.99', image: require('../assets/coffee.png'), stars: 4.2 },
-        { id: 2, name: 'Latte', price: '3.99', image: require('../assets/coffee2.png'), stars: 4.5 },
-        { id: 3, name: 'Cappuccino', price: '3.49', image: require('../assets/coffee3.png'), stars: 4.3 },
-        { id: 4, name: 'Espresso', price: '2.49', image: require('../assets/coffee4.png'), stars: 4.1 },
-        { id: 5, name: 'Mocha', price: '4.49', image: require('../assets/coffee5.png'), stars: 4.6 },
-    ];
 
-    // Define the category menu data including "All"
-    const categoryMenu = ['All', ...categories.map(item => item.name)];
+    // const categories: CoffeeTypes[] = [
+    //     { id: 1, name: 'Coffee', price: '2.99', image: require('../assets/coffee.png'), stars: 4.2 },
+    //     { id: 2, name: 'Latte', price: '3.99', image: require('../assets/coffee2.png'), stars: 4.5 },
+    //     { id: 3, name: 'Cappuccino', price: '3.49', image: require('../assets/coffee3.png'), stars: 4.3 },
+    //     { id: 4, name: 'Espresso', price: '2.49', image: require('../assets/coffee4.png'), stars: 4.1 },
+    //     { id: 5, name: 'Mocha', price: '4.49', image: require('../assets/coffee5.png'), stars: 4.6 },
+    // ];
 
-    // Filter items based on selected category and search query
-    const filteredCategories = categories.filter(item =>
+    useEffect(() => {
+        fetchCoffees();
+    }, []);
+
+    const fetchCoffees = async () => {
+        console.log("Fetching coffees")
+        try {
+            const response = await fetch('http://localhost:5003/coffees');
+            let data = await response.json();
+            console.log(data);
+
+            // Map images to the coffee data
+            data = data.map((item: CoffeeTypes, index: number) => ({
+                ...item,
+                image: imageMap[index + 1] // Assuming the index corresponds to the ID
+            }));
+            setCoffees(data);
+        } catch (error) {
+            console.error(error)
+        }
+    }
+
+    const categoryMenu = ['All', ...new Set(coffees.map(item => item.name))];
+
+    const filteredCategories = coffees.filter(item =>
         (category === 'All' || item.name === category) &&
         item.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -37,6 +58,14 @@ export default function HomeScreen() {
     const handleCardPress = (item: CoffeeTypes) => {
         setSelectedItem(item);
         setIsModalVisible(true);
+    }
+
+    const imageMap: { [key: string]: any } = {
+        1: require('../assets/coffee.png'),
+        2: require('../assets/coffee2.png'),
+        3: require('../assets/coffee3.png'),
+        4: require('../assets/coffee4.png'),
+        5: require('../assets/coffee5.png'),
     }
 
     return (
@@ -48,7 +77,6 @@ export default function HomeScreen() {
             />
 
             <SafeAreaView>
-                {/* Avatar and bell icon */}
                 <View style={styles.headerContainer}>
                     <Image
                         source={require('../assets/avatar.png')}
@@ -62,7 +90,6 @@ export default function HomeScreen() {
                     <BellIcon style={styles.bellIcon} size={27} color={'black'} />
                 </View>
 
-                {/* Search bar */}
                 <View style={styles.searchBarContainer}>
                     <View style={styles.searchBar}>
                         <TextInput
@@ -77,7 +104,6 @@ export default function HomeScreen() {
                     </View>
                 </View>
 
-                {/* Category Menu */}
                 <View style={styles.categoryMenu}>
                     <FlatList
                         horizontal
@@ -105,13 +131,12 @@ export default function HomeScreen() {
                     />
                 </View>
 
-                {/* Coffee cards carousel */}
                 <View style={styles.coffeeCardsContainer}>
                     <FlatList
                         horizontal
                         showsHorizontalScrollIndicator={false}
                         data={filteredCategories}
-                        keyExtractor={(item) => item.id.toString()}
+                        keyExtractor={(item) => item.name}
                         renderItem={({ item }) => (
                             <TouchableOpacity onPress={() => handleCardPress(item)}>
                                 <CoffeeCard item={item} />
@@ -121,8 +146,6 @@ export default function HomeScreen() {
                     />
                 </View>
             </SafeAreaView>
-
-            {/* Modal */}
             {selectedItem && (
                 <Modal
                     animationType="slide"
@@ -133,7 +156,7 @@ export default function HomeScreen() {
                     <View style={styles.modalContainer}>
                         <View style={styles.modalContent}>
                             <Text style={styles.modalTitle}>{selectedItem.name}</Text>
-                            <Image source={selectedItem.image ? selectedItem.image : require('../assets/coffee.png')} style={styles.modalImage} />
+                            <Image source={imageMap[selectedItem.image]} style={styles.modalImage} />
                             <Text style={styles.modalText}>Price: {selectedItem.price}</Text>
                             <Text style={styles.modalText}>Rating: {selectedItem.stars}</Text>
                             <Button title="Close" onPress={() => setIsModalVisible(false)} />
